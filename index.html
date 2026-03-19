@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
+    <title>Cycling Workout</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <!-- SETUP SCREEN -->
+    <div id="setup-screen" class="screen active">
+        <header>
+            <h1>Workout Setup</h1>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button id="theme-toggle-btn" class="btn-icon" title="Cambia tema">🌙</button>
+            </div>
+        </header>
+
+        <div class="workout-manager">
+            <div class="manager-row">
+                <input type="text" id="workout-name" placeholder="Nome Allenamento" value="Mio Allenamento">
+                <button id="save-workout-btn" class="btn secondary small">💾 Salva</button>
+            </div>
+            <div class="manager-row">
+                <select id="saved-workouts" class="workout-select">
+                    <option value="">-- Carica Allenamento --</option>
+                </select>
+                <button id="load-workout-btn" class="btn secondary small">📂 Carica</button>
+            </div>
+            <div class="manager-actions">
+                <button id="export-workout-btn" class="btn secondary small outline">📤 Esporta</button>
+                <button id="import-workout-btn" class="btn secondary small outline">📥 Importa</button>
+            </div>
+        </div>
+
+        <!-- Settings row: volume + loop -->
+        <div class="settings-bar">
+            <div class="settings-item">
+                <label>🔊 Volume</label>
+                <input type="range" id="volume-slider" min="0.1" max="1" step="0.1" value="0.9">
+            </div>
+            <div class="settings-item">
+                <label>🔁 Loop</label>
+                <button id="loop-toggle-btn" class="btn-toggle" data-active="false">OFF</button>
+            </div>
+        </div>
+
+        <div id="total-workout-time" class="total-workout-time">
+            Tempo Totale: 00:00
+        </div>
+
+        <div class="lap-list" id="lap-list"></div>
+
+        <div class="setup-actions">
+            <div class="actions-row">
+                <button id="add-lap-btn" class="btn secondary">+ Singolo Lap</button>
+                <button id="add-repeats-btn" class="btn secondary">+ Ripetute</button>
+            </div>
+            <button id="start-workout-btn" class="btn primary">INIZIA ALLENAMENTO</button>
+        </div>
+    </div>
+
+    <!-- WORKOUT SCREEN -->
+    <div id="workout-screen" class="screen">
+        <header>
+            <button id="stop-workout-btn" class="btn-icon">⏹</button>
+            <div id="global-timer">00:00</div>
+            <button id="toggle-target-btn" class="btn-icon">👁</button>
+        </header>
+        
+        <main class="workout-main">
+            <div class="lap-info" id="lap-info">Lap 1 / 5</div>
+            <div class="lap-timer" id="lap-timer">00:00</div>
+            
+            <div class="targets-container" id="targets-container">
+                <div class="target-box" id="zone-box">
+                    <span class="target-label">WATT / ZONA</span>
+                    <span class="target-value" id="target-watt">---</span>
+                </div>
+                <div class="target-box">
+                    <span class="target-label">RPM</span>
+                    <span class="target-value" id="target-rpm">---</span>
+                </div>
+            </div>
+
+            <div id="next-lap-preview" class="next-lap-preview hidden">
+                <div class="preview-header">⏰ PROSSIMO LAP</div>
+                <div class="preview-content">
+                    <span id="next-lap-name">Lap 2</span>
+                    <span id="next-lap-details">200W | 90 RPM</span>
+                </div>
+            </div>
+        </main>
+
+        <div class="controls">
+            <div class="controls-row">
+                <button id="play-pause-btn" class="btn primary" style="flex:3;">PAUSA</button>
+                <button id="skip-btn" class="btn secondary skip-btn" title="Salta al prossimo lap">⏭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIEPILOGO SCREEN -->
+    <div id="summary-screen" class="screen">
+        <header>
+            <h1>🏆 Riepilogo</h1>
+        </header>
+        <main class="summary-main">
+            <div class="summary-emoji">🎉</div>
+            <div class="summary-title">Allenamento Completato!</div>
+            
+            <div class="summary-stats">
+                <div class="summary-stat">
+                    <span class="stat-label">⏱ Durata Totale</span>
+                    <span class="stat-value" id="summary-duration">00:00</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="stat-label">✅ Lap Completati</span>
+                    <span class="stat-value" id="summary-laps">0</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="stat-label">⏭ Lap Saltati</span>
+                    <span class="stat-value" id="summary-skipped">0</span>
+                </div>
+            </div>
+
+            <div class="summary-message" id="summary-message">Grande lavoro!</div>
+        </main>
+        <div class="setup-actions">
+            <button id="repeat-workout-btn" class="btn secondary">🔁 Ripeti Allenamento</button>
+            <button id="back-to-setup-btn" class="btn primary">🏠 Torna al Setup</button>
+        </div>
+    </div>
+
+    <!-- SINGOLO LAP MODAL -->
+    <div id="lap-modal" class="modal hidden">
+        <div class="modal-content" style="max-height: 90dvh; overflow-y: auto;">
+            <h2>Configura Lap</h2>
+            <div class="form-group">
+                <label>Nome Lap (Opzionale)</label>
+                <input type="text" id="lap-name" placeholder="es. Riscaldamento">
+            </div>
+            <div class="form-group row-group">
+                <div class="col"><label>Minuti</label><input type="number" id="lap-min" value="1" min="0"></div>
+                <div class="col"><label>Secondi</label><input type="number" id="lap-sec" value="0" min="0" max="59"></div>
+            </div>
+            <div class="form-group row-group">
+                <div class="col"><label>Watt / Zona</label><input type="text" id="lap-watt" placeholder="es. 200W o Z2"></div>
+                <div class="col"><label>RPM</label><input type="number" id="lap-rpm" placeholder="es. 90"></div>
+            </div>
+            <div class="modal-actions">
+                <button id="cancel-lap-btn" class="btn secondary">Annulla</button>
+                <button id="save-lap-btn" class="btn primary">Salva</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIPETUTE MODAL -->
+    <div id="repeats-modal" class="modal hidden">
+        <div class="modal-content" style="max-height: 90dvh; overflow-y: auto;">
+            <h2>Aggiungi Ripetute</h2>
+            <div class="form-group">
+                <label>Nome Blocco (Es. VO2Max)</label>
+                <input type="text" id="rep-name" placeholder="Blocco Ripetute">
+            </div>
+            
+            <h3 class="section-title">🔥 Fase di Lavoro</h3>
+            <div class="form-group row-group">
+                <div class="col"><label>Min</label><input type="number" id="rep-lav-min" value="3" min="0"></div>
+                <div class="col"><label>Sec</label><input type="number" id="rep-lav-sec" value="0" min="0" max="59"></div>
+                <div class="col"><label>Watt/Z</label><input type="text" id="rep-lav-watt" placeholder="300W"></div>
+                <div class="col"><label>RPM</label><input type="number" id="rep-lav-rpm" placeholder="100"></div>
+            </div>
+
+            <h3 class="section-title">💧 Fase di Recupero</h3>
+            <div class="form-group row-group">
+                <div class="col"><label>Min</label><input type="number" id="rep-rec-min" value="3" min="0"></div>
+                <div class="col"><label>Sec</label><input type="number" id="rep-rec-sec" value="0" min="0" max="59"></div>
+                <div class="col"><label>Watt/Z</label><input type="text" id="rep-rec-watt" placeholder="150W"></div>
+                <div class="col"><label>RPM</label><input type="number" id="rep-rec-rpm" placeholder="85"></div>
+            </div>
+
+            <div class="form-group" style="margin-top: 24px;">
+                <label>Numero di Ripetizioni</label>
+                <input type="number" id="rep-count" value="4" min="1" step="1" style="border: 2px solid var(--accent); color: var(--accent); font-weight: bold; text-align: center;">
+            </div>
+
+            <div class="modal-actions">
+                <button id="cancel-repeats-btn" class="btn secondary">Annulla</button>
+                <button id="save-repeats-btn" class="btn primary">Salva Ripetute</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="wakeLock.js"></script>
+    <script src="audio.js"></script>
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js');
+            });
+        }
+    </script>
+</body>
+</html>
