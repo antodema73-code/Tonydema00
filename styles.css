@@ -241,6 +241,67 @@ h1 {
     cursor: pointer;
 }
 
+/* ===== FTP ZONES PANEL ===== */
+.ftp-zones-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.ftp-zones-panel.hidden {
+    display: none;
+}
+
+.ftp-zones-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+}
+
+.ftp-zones-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+}
+
+.ftp-zone-badge {
+    border-radius: 10px;
+    padding: 8px 4px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ftp-zone-badge .zone-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.ftp-zone-badge .zone-name {
+    font-size: 9px;
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+.ftp-zone-badge .zone-range {
+    font-size: 10px;
+    font-weight: 700;
+}
+
+/* Zone badge specific colors */
+.badge-z1 { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid #3b82f6; }
+.badge-z2 { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid #10b981; }
+.badge-z3 { background: rgba(234,179,8,0.15);  color: #facc15; border: 1px solid #eab308; }
+.badge-z4 { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid #f97316; }
+.badge-z5 { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid #ef4444; }
+
 /* ===== TOTAL TIME ===== */
 .total-workout-time {
     font-size: 15px;

@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let loopEnabled = false;
     let currentVolume = 0.9;
     let isDarkTheme = true;
+    let userFTP = localStorage.getItem('userFTP') || '';
 
     const LS_KEY = 'cycling_workouts';
     let savedWorkouts = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
@@ -85,9 +86,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const volumeSlider   = document.getElementById('volume-slider');
     const loopToggleBtn  = document.getElementById('loop-toggle-btn');
     const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    const ftpInput       = document.getElementById('ftp-input');
+    const ftpZonesPanel  = document.getElementById('ftp-zones-panel');
+    const ftpZonesGrid   = document.getElementById('ftp-zones-grid');
 
     // ====================== INIT ======================
     updateWorkoutSelect();
+    
+    if (userFTP) {
+        ftpInput.value = userFTP;
+        renderFTPZones();
+    }
 
     if (Object.keys(savedWorkouts).length === 0) {
         laps.push({ name: 'Riscaldamento', time: 600, watt: 'Z1', rpm: 90 });
@@ -220,23 +229,96 @@ document.addEventListener('DOMContentLoaded', () => {
         renderLaps();
     });
 
+    // ====================== FTP LOGIC ======================
+    ftpInput.addEventListener('input', () => {
+        const val = parseInt(ftpInput.value);
+        if (val && val >= 50 && val <= 600) {
+            userFTP = val.toString();
+            localStorage.setItem('userFTP', userFTP);
+            renderFTPZones();
+            renderLaps(); // update colors
+        } else if (!val) {
+            userFTP = '';
+            localStorage.removeItem('userFTP');
+            ftpZonesPanel.classList.add('hidden');
+            renderLaps(); // revert to generic colors
+        }
+    });
+
+    function renderFTPZones() {
+        if (!userFTP) {
+            ftpZonesPanel.classList.add('hidden');
+            return;
+        }
+        const ftp = parseInt(userFTP);
+        
+        // Coggan 5 Zones
+        const z1Max = Math.round(ftp * 0.55);
+        const z2Min = z1Max + 1;
+        const z2Max = Math.round(ftp * 0.75);
+        const z3Min = z2Max + 1;
+        const z3Max = Math.round(ftp * 0.90);
+        const z4Min = z3Max + 1;
+        const z4Max = Math.round(ftp * 1.05);
+        const z5Min = z4Max + 1;
+
+        ftpZonesGrid.innerHTML = `
+            <div class="ftp-zone-badge badge-z1">
+                <span class="zone-label">Z1</span>
+                <span class="zone-name">Risc.</span>
+                <span class="zone-range">< ${z1Max}W</span>
+            </div>
+            <div class="ftp-zone-badge badge-z2">
+                <span class="zone-label">Z2</span>
+                <span class="zone-name">Fondo</span>
+                <span class="zone-range">${z2Min}-${z2Max}W</span>
+            </div>
+            <div class="ftp-zone-badge badge-z3">
+                <span class="zone-label">Z3</span>
+                <span class="zone-name">Ritmo</span>
+                <span class="zone-range">${z3Min}-${z3Max}W</span>
+            </div>
+            <div class="ftp-zone-badge badge-z4">
+                <span class="zone-label">Z4</span>
+                <span class="zone-name">Soglia (FTP)</span>
+                <span class="zone-range">${z4Min}-${z4Max}W</span>
+            </div>
+            <div class="ftp-zone-badge badge-z5">
+                <span class="zone-label">Z5</span>
+                <span class="zone-name">VO2 Max / Sprint</span>
+                <span class="zone-range">> ${z5Min}W</span>
+            </div>
+        `;
+        ftpZonesPanel.classList.remove('hidden');
+    }
+
     // ====================== ZONE DETECTION ======================
     function detectZone(wattStr) {
         if (!wattStr || wattStr === '---') return null;
-        const s = wattStr.toUpperCase();
+        const s = wattStr.toString().toUpperCase();
+
         if (s.includes('Z5') || s.includes('ZONA 5') || s.includes('VO2')) return 'zone-5';
         if (s.includes('Z4') || s.includes('ZONA 4') || s.includes('SOGLIA')) return 'zone-4';
         if (s.includes('Z3') || s.includes('ZONA 3') || s.includes('RITMO')) return 'zone-3';
         if (s.includes('Z2') || s.includes('ZONA 2') || s.includes('FONDO')) return 'zone-2';
         if (s.includes('Z1') || s.includes('ZONA 1') || s.includes('RISC')) return 'zone-1';
-        // Numeric: rough FTP estimation (user can adjust)
+
         const wNum = parseInt(s);
         if (!isNaN(wNum)) {
-            if (wNum >= 350) return 'zone-5';
-            if (wNum >= 280) return 'zone-4';
-            if (wNum >= 220) return 'zone-3';
-            if (wNum >= 150) return 'zone-2';
-            return 'zone-1';
+            if (userFTP) {
+                const ftp = parseInt(userFTP);
+                if (wNum > Math.round(ftp * 1.05)) return 'zone-5';
+                if (wNum > Math.round(ftp * 0.90)) return 'zone-4';
+                if (wNum > Math.round(ftp * 0.75)) return 'zone-3';
+                if (wNum > Math.round(ftp * 0.55)) return 'zone-2';
+                return 'zone-1';
+            } else {
+                if (wNum >= 350) return 'zone-5';
+                if (wNum >= 280) return 'zone-4';
+                if (wNum >= 220) return 'zone-3';
+                if (wNum >= 150) return 'zone-2';
+                return 'zone-1';
+            }
         }
         return null;
     }
