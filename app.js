@@ -47,12 +47,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const lapWattInput = document.getElementById('lap-watt');
     const lapRpmInput  = document.getElementById('lap-rpm');
 
-    const repeatsModal        = document.getElementById('repeats-modal');
-    const cancelRepeatsBtn    = document.getElementById('cancel-repeats-btn');
-    const saveRepeatsBtn      = document.getElementById('save-repeats-btn');
-    const repNameInput        = document.getElementById('rep-name');
-    const workPhasesContainer = document.getElementById('work-phases-container');
-    const addWorkPhaseBtn     = document.getElementById('add-work-phase-btn');
+    const repeatsModal     = document.getElementById('repeats-modal');
+    const cancelRepeatsBtn = document.getElementById('cancel-repeats-btn');
+    const saveRepeatsBtn   = document.getElementById('save-repeats-btn');
+    const repNameInput     = document.getElementById('rep-name');
+    const addWorkPhaseBtn  = document.getElementById('add-work-phase-btn');
+    // workPhasesContainer resolved at call time (inside functions) to avoid stale reference
+    function getWorkPhasesContainer() { return document.getElementById('work-phases-container'); }
     const repRecMin   = document.getElementById('rep-rec-min');
     const repRecSec   = document.getElementById('rep-rec-sec');
     const repRecWatt  = document.getElementById('rep-rec-watt');
@@ -107,6 +108,52 @@ document.addEventListener('DOMContentLoaded', () => {
         workoutNameInput.value = firstKey;
     }
     renderLaps();
+
+    // ====================== DRAG & DROP (event delegation) ======================
+    lapListEl.addEventListener('dragstart', e => {
+        const item = e.target.closest('.lap-item');
+        if (!item) return;
+        dragSrcIndex = parseInt(item.dataset.lapIndex);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(dragSrcIndex));
+        setTimeout(() => item.classList.add('dragging'), 0);
+    });
+
+    lapListEl.addEventListener('dragend', e => {
+        document.querySelectorAll('.lap-item.dragging').forEach(el => el.classList.remove('dragging'));
+        document.querySelectorAll('.lap-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+
+    lapListEl.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const item = e.target.closest('.lap-item');
+        if (!item) return;
+        document.querySelectorAll('.lap-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+        item.classList.add('drag-over');
+    });
+
+    lapListEl.addEventListener('dragleave', e => {
+        const item = e.target.closest('.lap-item');
+        if (item && !item.contains(e.relatedTarget)) {
+            item.classList.remove('drag-over');
+        }
+    });
+
+    lapListEl.addEventListener('drop', e => {
+        e.preventDefault();
+        const item = e.target.closest('.lap-item');
+        if (!item) return;
+        item.classList.remove('drag-over');
+        const destIndex = parseInt(item.dataset.lapIndex);
+        if (!isNaN(dragSrcIndex) && dragSrcIndex !== destIndex) {
+            const moved = laps.splice(dragSrcIndex, 1)[0];
+            laps.splice(destIndex, 0, moved);
+            dragSrcIndex = -1;
+            renderLaps();
+        }
+    });
+
 
     // ====================== THEME ======================
     themeToggleBtn.addEventListener('click', () => {
@@ -217,22 +264,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const div = document.createElement('div');
         div.className = 'work-phase';
         div.setAttribute('data-phase', phaseIndex);
-        div.innerHTML = `
-            <div class="work-phase-header">
-                <span class="work-phase-label">🔥 Fase ${phaseIndex + 1}</span>
-                ${phaseIndex > 0
-                    ? `<button class="remove-phase-btn" type="button">✕ Rimuovi</button>`
-                    : ''}
-            </div>
-            <div class="form-group">
-                <input type="text" class="phase-name" placeholder="Nome fase (es. Z3, Soglia...)" style="width:100%;background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);padding:10px;border-radius:10px;font-size:15px;font-weight:600;">
-            </div>
-            <div class="form-group row-group">
-                <div class="col"><label>Min</label><input type="number" class="phase-min" value="${phaseIndex === 0 ? 2 : 1}" min="0"></div>
-                <div class="col"><label>Sec</label><input type="number" class="phase-sec" value="0" min="0" max="59"></div>
-                <div class="col"><label>Watt/Z</label><input type="text" class="phase-watt" placeholder="300W"></div>
-                <div class="col"><label>RPM</label><input type="number" class="phase-rpm" placeholder="95"></div>
-            </div>`;
+        div.innerHTML = [
+            '<div class="work-phase-header">',
+            `  <span class="work-phase-label">&#x1F525; Fase ${phaseIndex + 1}</span>`,
+            phaseIndex > 0 ? '  <button class="remove-phase-btn" type="button">&#x2715; Rimuovi</button>' : '',
+            '</div>',
+            '<div class="form-group">',
+            '  <input type="text" class="phase-name" placeholder="Nome fase (es. Z3, Soglia...)"',
+            '   style="width:100%;background:var(--bg-surface);border:1px solid var(--border);',
+            '   color:var(--text-primary);padding:10px;border-radius:10px;font-size:15px;font-weight:600;">',
+            '</div>',
+            '<div class="form-group row-group">',
+            `  <div class="col"><label>Min</label><input type="number" class="phase-min" value="${phaseIndex === 0 ? 2 : 1}" min="0"></div>`,
+            '  <div class="col"><label>Sec</label><input type="number" class="phase-sec" value="0" min="0" max="59"></div>',
+            '  <div class="col"><label>Watt/Z</label><input type="text" class="phase-watt" placeholder="300W"></div>',
+            '  <div class="col"><label>RPM</label><input type="number" class="phase-rpm" placeholder="95"></div>',
+            '</div>'
+        ].join('');
 
         const removeBtn = div.querySelector('.remove-phase-btn');
         if (removeBtn) {
@@ -245,20 +293,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renumberWorkPhases() {
-        const phases = workPhasesContainer.querySelectorAll('.work-phase');
+        const container = getWorkPhasesContainer();
+        if (!container) return;
+        const phases = container.querySelectorAll('.work-phase');
         phases.forEach((ph, i) => {
             ph.setAttribute('data-phase', i);
             const label = ph.querySelector('.work-phase-label');
-            if (label) label.textContent = `🔥 Fase ${i + 1}`;
+            if (label) label.textContent = `\uD83D\uDD25 Fase ${i + 1}`;
+            const rb = ph.querySelector('.remove-phase-btn');
+            if (i === 0 && rb) rb.remove();
         });
         workPhaseCount = phases.length;
     }
 
     function initWorkPhases() {
-        workPhasesContainer.innerHTML = '';
+        const container = getWorkPhasesContainer();
+        if (!container) { console.error('work-phases-container not found!'); return; }
+        container.innerHTML = '';
         workPhaseCount = 0;
-        const firstPhase = createWorkPhaseEl(0);
-        workPhasesContainer.appendChild(firstPhase);
+        container.appendChild(createWorkPhaseEl(0));
         workPhaseCount = 1;
     }
 
@@ -273,11 +326,16 @@ document.addEventListener('DOMContentLoaded', () => {
         repeatsModal.classList.remove('hidden');
     });
 
-    addWorkPhaseBtn.addEventListener('click', () => {
+    addWorkPhaseBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const container = getWorkPhasesContainer();
+        if (!container) return;
         const newPhase = createWorkPhaseEl(workPhaseCount);
-        workPhasesContainer.appendChild(newPhase);
+        container.appendChild(newPhase);
         workPhaseCount++;
         renumberWorkPhases();
+        // Scroll modal to show new phase
+        newPhase.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
 
     cancelRepeatsBtn.addEventListener('click', () => repeatsModal.classList.add('hidden'));
@@ -285,7 +343,9 @@ document.addEventListener('DOMContentLoaded', () => {
     saveRepeatsBtn.addEventListener('click', () => {
         // Collect all work phases
         const phases = [];
-        workPhasesContainer.querySelectorAll('.work-phase').forEach(phaseEl => {
+        const container = getWorkPhasesContainer();
+        if (!container) return;
+        container.querySelectorAll('.work-phase').forEach(phaseEl => {
             const min  = parseInt(phaseEl.querySelector('.phase-min').value) || 0;
             const sec  = parseInt(phaseEl.querySelector('.phase-sec').value) || 0;
             const time = min * 60 + sec;
@@ -407,43 +467,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = document.createElement('div');
             item.className = 'lap-item' + (zone ? ' ' + zone : '');
             item.setAttribute('draggable', 'true');
+            item.dataset.lapIndex = index;
             item.innerHTML = `
-                <div class="drag-handle" title="Trascina per riordinare">⠿</div>
+                <div class="drag-handle">&#x2807;</div>
                 <div class="lap-item-info">
-                    <span class="lap-item-time">${displayName} — ${timeStr}</span>
+                    <span class="lap-item-time">${displayName} &mdash; ${timeStr}</span>
                     <span class="lap-item-targets">W: ${lap.watt} &nbsp;|&nbsp; RPM: ${lap.rpm}</span>
                 </div>
                 <div class="lap-actions">
-                    <button class="edit-btn" data-index="${index}">✏️</button>
-                    <button class="delete-btn" data-index="${index}">×</button>
+                    <button class="edit-btn" data-index="${index}">&#x270F;&#xFE0F;</button>
+                    <button class="delete-btn" data-index="${index}">&times;</button>
                 </div>`;
-
-            // Drag & Drop events
-            item.addEventListener('dragstart', e => {
-                dragSrcIndex = index;
-                e.dataTransfer.effectAllowed = 'move';
-                setTimeout(() => item.classList.add('dragging'), 0);
-            });
-            item.addEventListener('dragend', () => item.classList.remove('dragging'));
-            item.addEventListener('dragover', e => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                document.querySelectorAll('.lap-item.drag-over').forEach(el => el.classList.remove('drag-over'));
-                item.classList.add('drag-over');
-            });
-            item.addEventListener('dragleave', e => {
-                if (!item.contains(e.relatedTarget)) item.classList.remove('drag-over');
-            });
-            item.addEventListener('drop', e => {
-                e.preventDefault();
-                item.classList.remove('drag-over');
-                if (dragSrcIndex !== -1 && dragSrcIndex !== index) {
-                    const moved = laps.splice(dragSrcIndex, 1)[0];
-                    laps.splice(index, 0, moved);
-                    dragSrcIndex = -1;
-                    renderLaps();
-                }
-            });
 
             lapListEl.appendChild(item);
         });

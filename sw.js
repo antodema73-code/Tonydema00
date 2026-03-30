@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workout-cache-v8';
+const CACHE_NAME = 'workout-cache-v9';
 const ASSETS_TO_CACHE = [
     './', './index.html', './styles.css',
     './app.js', './audio.js', './wakeLock.js', './manifest.json'
