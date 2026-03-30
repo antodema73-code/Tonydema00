@@ -52,7 +52,7 @@
             </div>
         </div>
 
-        <!-- FTP Zone Table (shown only when FTP is set) -->
+        <!-- FTP Zone Table -->
         <div id="ftp-zones-panel" class="ftp-zones-panel hidden">
             <div class="ftp-zones-title">📊 Le Tue Zone di Potenza</div>
             <div class="ftp-zones-grid" id="ftp-zones-grid"></div>
@@ -168,22 +168,19 @@
         </div>
     </div>
 
-    <!-- RIPETUTE MODAL -->
+    <!-- RIPETUTE MODAL (multi-lavoro) -->
     <div id="repeats-modal" class="modal hidden">
         <div class="modal-content" style="max-height: 90dvh; overflow-y: auto;">
             <h2>Aggiungi Ripetute</h2>
             <div class="form-group">
-                <label>Nome Blocco (Es. VO2Max)</label>
+                <label>Nome Blocco (Es. Progressione)</label>
                 <input type="text" id="rep-name" placeholder="Blocco Ripetute">
             </div>
-            
-            <h3 class="section-title">🔥 Fase di Lavoro</h3>
-            <div class="form-group row-group">
-                <div class="col"><label>Min</label><input type="number" id="rep-lav-min" value="3" min="0"></div>
-                <div class="col"><label>Sec</label><input type="number" id="rep-lav-sec" value="0" min="0" max="59"></div>
-                <div class="col"><label>Watt/Z</label><input type="text" id="rep-lav-watt" placeholder="300W"></div>
-                <div class="col"><label>RPM</label><input type="number" id="rep-lav-rpm" placeholder="100"></div>
-            </div>
+
+            <h3 class="section-title">🔥 Fasi di Lavoro</h3>
+            <!-- Work phases injected dynamically by JS -->
+            <div id="work-phases-container"></div>
+            <button id="add-work-phase-btn" class="btn secondary" style="width:100%; margin-bottom:14px; font-size:14px;">＋ Aggiungi Fase di Lavoro</button>
 
             <h3 class="section-title">💧 Fase di Recupero</h3>
             <div class="form-group row-group">

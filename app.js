@@ -16,26 +16,27 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentVolume = 0.9;
     let isDarkTheme = true;
     let userFTP = localStorage.getItem('userFTP') || '';
+    let dragSrcIndex = -1;
 
     const LS_KEY = 'cycling_workouts';
     let savedWorkouts = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
 
     // ====================== DOM ======================
-    const setupScreen   = document.getElementById('setup-screen');
-    const workoutScreen = document.getElementById('workout-screen');
-    const summaryScreen = document.getElementById('summary-screen');
-    const lapListEl     = document.getElementById('lap-list');
-    const addLapBtn     = document.getElementById('add-lap-btn');
-    const addRepeatsBtn = document.getElementById('add-repeats-btn');
+    const setupScreen    = document.getElementById('setup-screen');
+    const workoutScreen  = document.getElementById('workout-screen');
+    const summaryScreen  = document.getElementById('summary-screen');
+    const lapListEl      = document.getElementById('lap-list');
+    const addLapBtn      = document.getElementById('add-lap-btn');
+    const addRepeatsBtn  = document.getElementById('add-repeats-btn');
     const startWorkoutBtn = document.getElementById('start-workout-btn');
     const totalWorkoutTimeEl = document.getElementById('total-workout-time');
 
-    const workoutNameInput   = document.getElementById('workout-name');
-    const saveWorkoutBtn     = document.getElementById('save-workout-btn');
+    const workoutNameInput    = document.getElementById('workout-name');
+    const saveWorkoutBtn      = document.getElementById('save-workout-btn');
     const savedWorkoutsSelect = document.getElementById('saved-workouts');
-    const loadWorkoutBtn     = document.getElementById('load-workout-btn');
-    const exportWorkoutBtn   = document.getElementById('export-workout-btn');
-    const importWorkoutBtn   = document.getElementById('import-workout-btn');
+    const loadWorkoutBtn      = document.getElementById('load-workout-btn');
+    const exportWorkoutBtn    = document.getElementById('export-workout-btn');
+    const importWorkoutBtn    = document.getElementById('import-workout-btn');
 
     const lapModal     = document.getElementById('lap-modal');
     const cancelLapBtn = document.getElementById('cancel-lap-btn');
@@ -46,40 +47,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const lapWattInput = document.getElementById('lap-watt');
     const lapRpmInput  = document.getElementById('lap-rpm');
 
-    const repeatsModal     = document.getElementById('repeats-modal');
-    const cancelRepeatsBtn = document.getElementById('cancel-repeats-btn');
-    const saveRepeatsBtn   = document.getElementById('save-repeats-btn');
-    const repNameInput = document.getElementById('rep-name');
-    const repLavMin  = document.getElementById('rep-lav-min');
-    const repLavSec  = document.getElementById('rep-lav-sec');
-    const repLavWatt = document.getElementById('rep-lav-watt');
-    const repLavRpm  = document.getElementById('rep-lav-rpm');
-    const repRecMin  = document.getElementById('rep-rec-min');
-    const repRecSec  = document.getElementById('rep-rec-sec');
-    const repRecWatt = document.getElementById('rep-rec-watt');
-    const repRecRpm  = document.getElementById('rep-rec-rpm');
+    const repeatsModal        = document.getElementById('repeats-modal');
+    const cancelRepeatsBtn    = document.getElementById('cancel-repeats-btn');
+    const saveRepeatsBtn      = document.getElementById('save-repeats-btn');
+    const repNameInput        = document.getElementById('rep-name');
+    const workPhasesContainer = document.getElementById('work-phases-container');
+    const addWorkPhaseBtn     = document.getElementById('add-work-phase-btn');
+    const repRecMin   = document.getElementById('rep-rec-min');
+    const repRecSec   = document.getElementById('rep-rec-sec');
+    const repRecWatt  = document.getElementById('rep-rec-watt');
+    const repRecRpm   = document.getElementById('rep-rec-rpm');
     const repCountInput = document.getElementById('rep-count');
 
-    const stopWorkoutBtn = document.getElementById('stop-workout-btn');
-    const globalTimerEl  = document.getElementById('global-timer');
-    const toggleTargetBtn = document.getElementById('toggle-target-btn');
-    const targetsContainer = document.getElementById('targets-container');
-    const lapTimerEl  = document.getElementById('lap-timer');
-    const lapInfoEl   = document.getElementById('lap-info');
-    const targetWattEl = document.getElementById('target-watt');
-    const targetRpmEl  = document.getElementById('target-rpm');
-    const playPauseBtn = document.getElementById('play-pause-btn');
-    const skipBtn      = document.getElementById('skip-btn');
-    const zoneBox      = document.getElementById('zone-box');
+    const stopWorkoutBtn    = document.getElementById('stop-workout-btn');
+    const globalTimerEl     = document.getElementById('global-timer');
+    const toggleTargetBtn   = document.getElementById('toggle-target-btn');
+    const targetsContainer  = document.getElementById('targets-container');
+    const lapTimerEl        = document.getElementById('lap-timer');
+    const lapInfoEl         = document.getElementById('lap-info');
+    const targetWattEl      = document.getElementById('target-watt');
+    const targetRpmEl       = document.getElementById('target-rpm');
+    const playPauseBtn      = document.getElementById('play-pause-btn');
+    const skipBtn           = document.getElementById('skip-btn');
+    const zoneBox           = document.getElementById('zone-box');
 
-    const nextLapPreview  = document.getElementById('next-lap-preview');
-    const nextLapNameEl   = document.getElementById('next-lap-name');
+    const nextLapPreview   = document.getElementById('next-lap-preview');
+    const nextLapNameEl    = document.getElementById('next-lap-name');
     const nextLapDetailsEl = document.getElementById('next-lap-details');
 
-    const summaryDuration = document.getElementById('summary-duration');
-    const summaryLaps     = document.getElementById('summary-laps');
-    const summarySkipped  = document.getElementById('summary-skipped');
-    const summaryMessage  = document.getElementById('summary-message');
+    const summaryDuration  = document.getElementById('summary-duration');
+    const summaryLaps      = document.getElementById('summary-laps');
+    const summarySkipped   = document.getElementById('summary-skipped');
+    const summaryMessage   = document.getElementById('summary-message');
     const repeatWorkoutBtn = document.getElementById('repeat-workout-btn');
     const backToSetupBtn   = document.getElementById('back-to-setup-btn');
 
@@ -92,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ====================== INIT ======================
     updateWorkoutSelect();
-    
+
     if (userFTP) {
         ftpInput.value = userFTP;
         renderFTPZones();
@@ -211,20 +210,121 @@ document.addEventListener('DOMContentLoaded', () => {
         renderLaps();
     });
 
-    // ====================== RIPETUTE MODAL ======================
-    addRepeatsBtn.addEventListener('click', () => repeatsModal.classList.remove('hidden'));
+    // ====================== RIPETUTE MODAL (MULTI-LAVORO) ======================
+    let workPhaseCount = 0;
+
+    function createWorkPhaseEl(phaseIndex) {
+        const div = document.createElement('div');
+        div.className = 'work-phase';
+        div.setAttribute('data-phase', phaseIndex);
+        div.innerHTML = `
+            <div class="work-phase-header">
+                <span class="work-phase-label">🔥 Fase ${phaseIndex + 1}</span>
+                ${phaseIndex > 0
+                    ? `<button class="remove-phase-btn" type="button">✕ Rimuovi</button>`
+                    : ''}
+            </div>
+            <div class="form-group">
+                <input type="text" class="phase-name" placeholder="Nome fase (es. Z3, Soglia...)" style="width:100%;background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);padding:10px;border-radius:10px;font-size:15px;font-weight:600;">
+            </div>
+            <div class="form-group row-group">
+                <div class="col"><label>Min</label><input type="number" class="phase-min" value="${phaseIndex === 0 ? 2 : 1}" min="0"></div>
+                <div class="col"><label>Sec</label><input type="number" class="phase-sec" value="0" min="0" max="59"></div>
+                <div class="col"><label>Watt/Z</label><input type="text" class="phase-watt" placeholder="300W"></div>
+                <div class="col"><label>RPM</label><input type="number" class="phase-rpm" placeholder="95"></div>
+            </div>`;
+
+        const removeBtn = div.querySelector('.remove-phase-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', () => {
+                div.remove();
+                renumberWorkPhases();
+            });
+        }
+        return div;
+    }
+
+    function renumberWorkPhases() {
+        const phases = workPhasesContainer.querySelectorAll('.work-phase');
+        phases.forEach((ph, i) => {
+            ph.setAttribute('data-phase', i);
+            const label = ph.querySelector('.work-phase-label');
+            if (label) label.textContent = `🔥 Fase ${i + 1}`;
+        });
+        workPhaseCount = phases.length;
+    }
+
+    function initWorkPhases() {
+        workPhasesContainer.innerHTML = '';
+        workPhaseCount = 0;
+        const firstPhase = createWorkPhaseEl(0);
+        workPhasesContainer.appendChild(firstPhase);
+        workPhaseCount = 1;
+    }
+
+    addRepeatsBtn.addEventListener('click', () => {
+        repNameInput.value = '';
+        repRecMin.value = 3;
+        repRecSec.value = 0;
+        repRecWatt.value = '';
+        repRecRpm.value = '';
+        repCountInput.value = 4;
+        initWorkPhases();
+        repeatsModal.classList.remove('hidden');
+    });
+
+    addWorkPhaseBtn.addEventListener('click', () => {
+        const newPhase = createWorkPhaseEl(workPhaseCount);
+        workPhasesContainer.appendChild(newPhase);
+        workPhaseCount++;
+        renumberWorkPhases();
+    });
+
     cancelRepeatsBtn.addEventListener('click', () => repeatsModal.classList.add('hidden'));
 
     saveRepeatsBtn.addEventListener('click', () => {
-        const timeLav = (parseInt(repLavMin.value) || 0) * 60 + (parseInt(repLavSec.value) || 0);
+        // Collect all work phases
+        const phases = [];
+        workPhasesContainer.querySelectorAll('.work-phase').forEach(phaseEl => {
+            const min  = parseInt(phaseEl.querySelector('.phase-min').value) || 0;
+            const sec  = parseInt(phaseEl.querySelector('.phase-sec').value) || 0;
+            const time = min * 60 + sec;
+            const watt = phaseEl.querySelector('.phase-watt').value.trim() || '---';
+            const rpm  = phaseEl.querySelector('.phase-rpm').value.trim() || '---';
+            const nm   = phaseEl.querySelector('.phase-name').value.trim();
+            if (time > 0) phases.push({ time, watt, rpm, name: nm });
+        });
+
         const timeRec = (parseInt(repRecMin.value) || 0) * 60 + (parseInt(repRecSec.value) || 0);
-        const times = parseInt(repCountInput.value) || 1;
-        if (timeLav <= 0 && timeRec <= 0) { alert("Inserisci il tempo per almeno una fase"); return; }
+        const times   = Math.max(1, parseInt(repCountInput.value) || 1);
         const baseName = repNameInput.value.trim() || 'Ripetute';
-        for (let i = 1; i <= times; i++) {
-            if (timeLav > 0) laps.push({ name: `${baseName} - LAV ${i}/${times}`, time: timeLav, watt: repLavWatt.value || '---', rpm: repLavRpm.value || '---' });
-            if (timeRec > 0) laps.push({ name: `${baseName} - REC ${i}/${times}`, time: timeRec, watt: repRecWatt.value || '---', rpm: repRecRpm.value || '---' });
+
+        if (phases.length === 0 && timeRec === 0) {
+            alert("Inserisci almeno una fase di lavoro o il recupero con tempo > 0");
+            return;
         }
+
+        for (let i = 1; i <= times; i++) {
+            phases.forEach((phase, pi) => {
+                const phaseName = phase.name ||
+                    (phases.length === 1 ? 'LAV' : `LAV${pi + 1}`);
+                laps.push({
+                    name: `${baseName} - ${phaseName} ${i}/${times}`,
+                    time: phase.time,
+                    watt: phase.watt,
+                    rpm:  phase.rpm
+                });
+            });
+            if (timeRec > 0) {
+                laps.push({
+                    name: `${baseName} - REC ${i}/${times}`,
+                    time: timeRec,
+                    watt: repRecWatt.value.trim() || '---',
+                    rpm:  repRecRpm.value.trim() || '---'
+                });
+            }
+        }
+
         repeatsModal.classList.add('hidden');
         renderLaps();
     });
@@ -236,59 +336,29 @@ document.addEventListener('DOMContentLoaded', () => {
             userFTP = val.toString();
             localStorage.setItem('userFTP', userFTP);
             renderFTPZones();
-            renderLaps(); // update colors
+            renderLaps();
         } else if (!val) {
             userFTP = '';
             localStorage.removeItem('userFTP');
             ftpZonesPanel.classList.add('hidden');
-            renderLaps(); // revert to generic colors
+            renderLaps();
         }
     });
 
     function renderFTPZones() {
-        if (!userFTP) {
-            ftpZonesPanel.classList.add('hidden');
-            return;
-        }
+        if (!userFTP) { ftpZonesPanel.classList.add('hidden'); return; }
         const ftp = parseInt(userFTP);
-        
-        // Coggan 5 Zones
         const z1Max = Math.round(ftp * 0.55);
-        const z2Min = z1Max + 1;
-        const z2Max = Math.round(ftp * 0.75);
-        const z3Min = z2Max + 1;
-        const z3Max = Math.round(ftp * 0.90);
-        const z4Min = z3Max + 1;
-        const z4Max = Math.round(ftp * 1.05);
+        const z2Min = z1Max + 1; const z2Max = Math.round(ftp * 0.75);
+        const z3Min = z2Max + 1; const z3Max = Math.round(ftp * 0.90);
+        const z4Min = z3Max + 1; const z4Max = Math.round(ftp * 1.05);
         const z5Min = z4Max + 1;
-
         ftpZonesGrid.innerHTML = `
-            <div class="ftp-zone-badge badge-z1">
-                <span class="zone-label">Z1</span>
-                <span class="zone-name">Risc.</span>
-                <span class="zone-range">< ${z1Max}W</span>
-            </div>
-            <div class="ftp-zone-badge badge-z2">
-                <span class="zone-label">Z2</span>
-                <span class="zone-name">Fondo</span>
-                <span class="zone-range">${z2Min}-${z2Max}W</span>
-            </div>
-            <div class="ftp-zone-badge badge-z3">
-                <span class="zone-label">Z3</span>
-                <span class="zone-name">Ritmo</span>
-                <span class="zone-range">${z3Min}-${z3Max}W</span>
-            </div>
-            <div class="ftp-zone-badge badge-z4">
-                <span class="zone-label">Z4</span>
-                <span class="zone-name">Soglia (FTP)</span>
-                <span class="zone-range">${z4Min}-${z4Max}W</span>
-            </div>
-            <div class="ftp-zone-badge badge-z5">
-                <span class="zone-label">Z5</span>
-                <span class="zone-name">VO2 Max / Sprint</span>
-                <span class="zone-range">> ${z5Min}W</span>
-            </div>
-        `;
+            <div class="ftp-zone-badge badge-z1"><span class="zone-label">Z1</span><span class="zone-name">Risc.</span><span class="zone-range">&lt;${z1Max}W</span></div>
+            <div class="ftp-zone-badge badge-z2"><span class="zone-label">Z2</span><span class="zone-name">Fondo</span><span class="zone-range">${z2Min}-${z2Max}W</span></div>
+            <div class="ftp-zone-badge badge-z3"><span class="zone-label">Z3</span><span class="zone-name">Ritmo</span><span class="zone-range">${z3Min}-${z3Max}W</span></div>
+            <div class="ftp-zone-badge badge-z4"><span class="zone-label">Z4</span><span class="zone-name">Soglia</span><span class="zone-range">${z4Min}-${z4Max}W</span></div>
+            <div class="ftp-zone-badge badge-z5"><span class="zone-label">Z5</span><span class="zone-name">VO2/Sprint</span><span class="zone-range">&gt;${z5Min}W</span></div>`;
         ftpZonesPanel.classList.remove('hidden');
     }
 
@@ -296,13 +366,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function detectZone(wattStr) {
         if (!wattStr || wattStr === '---') return null;
         const s = wattStr.toString().toUpperCase();
-
         if (s.includes('Z5') || s.includes('ZONA 5') || s.includes('VO2')) return 'zone-5';
         if (s.includes('Z4') || s.includes('ZONA 4') || s.includes('SOGLIA')) return 'zone-4';
         if (s.includes('Z3') || s.includes('ZONA 3') || s.includes('RITMO')) return 'zone-3';
         if (s.includes('Z2') || s.includes('ZONA 2') || s.includes('FONDO')) return 'zone-2';
         if (s.includes('Z1') || s.includes('ZONA 1') || s.includes('RISC')) return 'zone-1';
-
         const wNum = parseInt(s);
         if (!isNaN(wNum)) {
             if (userFTP) {
@@ -323,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
-    // ====================== RENDER LAPS ======================
+    // ====================== RENDER LAPS (with Drag & Drop) ======================
     function renderLaps() {
         lapListEl.innerHTML = '';
         let totalSec = 0;
@@ -332,21 +400,51 @@ document.addEventListener('DOMContentLoaded', () => {
             totalSec += lap.time;
             const min = Math.floor(lap.time / 60);
             const sec = lap.time % 60;
-            const timeStr = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+            const timeStr = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
             const displayName = lap.name || `Lap ${index + 1}`;
             const zone = detectZone(lap.watt);
 
             const item = document.createElement('div');
             item.className = 'lap-item' + (zone ? ' ' + zone : '');
+            item.setAttribute('draggable', 'true');
             item.innerHTML = `
+                <div class="drag-handle" title="Trascina per riordinare">⠿</div>
                 <div class="lap-item-info">
                     <span class="lap-item-time">${displayName} — ${timeStr}</span>
-                    <span class="lap-item-targets">W/Zone: ${lap.watt} &nbsp;|&nbsp; RPM: ${lap.rpm}</span>
+                    <span class="lap-item-targets">W: ${lap.watt} &nbsp;|&nbsp; RPM: ${lap.rpm}</span>
                 </div>
                 <div class="lap-actions">
                     <button class="edit-btn" data-index="${index}">✏️</button>
                     <button class="delete-btn" data-index="${index}">×</button>
                 </div>`;
+
+            // Drag & Drop events
+            item.addEventListener('dragstart', e => {
+                dragSrcIndex = index;
+                e.dataTransfer.effectAllowed = 'move';
+                setTimeout(() => item.classList.add('dragging'), 0);
+            });
+            item.addEventListener('dragend', () => item.classList.remove('dragging'));
+            item.addEventListener('dragover', e => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                document.querySelectorAll('.lap-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+                item.classList.add('drag-over');
+            });
+            item.addEventListener('dragleave', e => {
+                if (!item.contains(e.relatedTarget)) item.classList.remove('drag-over');
+            });
+            item.addEventListener('drop', e => {
+                e.preventDefault();
+                item.classList.remove('drag-over');
+                if (dragSrcIndex !== -1 && dragSrcIndex !== index) {
+                    const moved = laps.splice(dragSrcIndex, 1)[0];
+                    laps.splice(index, 0, moved);
+                    dragSrcIndex = -1;
+                    renderLaps();
+                }
+            });
+
             lapListEl.appendChild(item);
         });
 
@@ -361,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Edit buttons
         document.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', e => {
-            editingLapIndex = parseInt(e.target.getAttribute('data-index'));
+            editingLapIndex = parseInt(e.currentTarget.getAttribute('data-index'));
             const lap = laps[editingLapIndex];
             document.querySelector('#lap-modal h2').textContent = 'Modifica Lap';
             saveLapBtn.textContent = 'Aggiorna';
@@ -369,16 +467,16 @@ document.addEventListener('DOMContentLoaded', () => {
             lapMinInput.value = Math.floor(lap.time / 60);
             lapSecInput.value = lap.time % 60;
             lapWattInput.value = lap.watt === '---' ? '' : lap.watt;
-            lapRpmInput.value = lap.rpm === '---' ? '' : lap.rpm;
+            lapRpmInput.value  = lap.rpm  === '---' ? '' : lap.rpm;
             lapModal.classList.remove('hidden');
         }));
 
         // Delete buttons — con conferma
         document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', e => {
-            const index = parseInt(e.target.getAttribute('data-index'));
-            const name = laps[index].name || `Lap ${index + 1}`;
+            const idx = parseInt(e.currentTarget.getAttribute('data-index'));
+            const name = laps[idx].name || `Lap ${idx + 1}`;
             if (confirm(`Eliminare "${name}"?`)) {
-                laps.splice(index, 1);
+                laps.splice(idx, 1);
                 renderLaps();
             }
         }));
@@ -433,7 +531,6 @@ document.addEventListener('DOMContentLoaded', () => {
         else { audioController.init(); playWorkout(); }
     });
 
-    // SKIP BUTTON
     skipBtn.addEventListener('click', () => {
         if (!isPlaying && !isPreparing) return;
         if (isPreparing) {
@@ -443,15 +540,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         skippedCount++;
         currentLapIndex++;
-        if (currentLapIndex >= laps.length) {
-            finishWorkout();
-        } else {
-            startLap(currentLapIndex);
-        }
+        if (currentLapIndex >= laps.length) { finishWorkout(); }
+        else { startLap(currentLapIndex); }
         vibrate([50]);
     });
 
-    // Summary buttons
     repeatWorkoutBtn.addEventListener('click', () => {
         summaryScreen.classList.remove('active');
         workoutScreen.classList.add('active');
@@ -483,8 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const displayName = lap.name || `Lap ${index + 1}`;
         lapInfoEl.textContent = `${displayName} (${index + 1} / ${laps.length})`;
         targetWattEl.textContent = lap.watt;
-        targetRpmEl.textContent = lap.rpm;
-        // Zone color
+        targetRpmEl.textContent  = lap.rpm;
         const zone = detectZone(lap.watt);
         zoneBox.className = 'target-box' + (zone ? ' ' + zone : '');
         updateTimerDisplays();
@@ -498,7 +590,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => audioController.playHighBeep(), 600);
         vibrate([200, 100, 200]);
 
-        // Mostra riepilogo
         workoutScreen.classList.remove('active');
         summaryScreen.classList.add('active');
 
@@ -509,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (th > 0) td += `${th}h `;
         td += `${String(tm).padStart(2,'0')}m ${String(ts).padStart(2,'0')}s`;
         summaryDuration.textContent = td;
-        summaryLaps.textContent = currentLapIndex - skippedCount;
+        summaryLaps.textContent    = currentLapIndex - skippedCount;
         summarySkipped.textContent = skippedCount;
 
         const messages = [
@@ -520,11 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'Fantastico! Il podio si avvicina! 🎯'
         ];
         summaryMessage.textContent = messages[Math.floor(Math.random() * messages.length)];
-
-        // Loop automatico
-        if (loopEnabled) {
-            setTimeout(() => repeatWorkoutBtn.click(), 3000);
-        }
+        if (loopEnabled) setTimeout(() => repeatWorkoutBtn.click(), 3000);
     }
 
     function playWorkout() {
@@ -547,7 +634,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function tick() {
         if (isPreparing) {
-            // Suona PRIMA di decrementare (fix sync): beep a 5,4,3,2,1
             if (prepCountdown > 0) {
                 audioController.playShortBeep();
                 vibrate([80]);
@@ -576,18 +662,15 @@ document.addEventListener('DOMContentLoaded', () => {
             audioController.playHighBeep();
             vibrate([300]);
             currentLapIndex++;
-            if (currentLapIndex >= laps.length) {
-                finishWorkout();
-            } else {
-                startLap(currentLapIndex);
-            }
+            if (currentLapIndex >= laps.length) { finishWorkout(); }
+            else { startLap(currentLapIndex); }
         }
     }
 
     function checkNextLapPreview() {
         if (currentLapIndex < laps.length - 1 && lapTimeRemaining <= 30 && lapTimeRemaining > 0) {
             const nextLap = laps[currentLapIndex + 1];
-            nextLapNameEl.textContent = nextLap.name || `Lap ${currentLapIndex + 2}`;
+            nextLapNameEl.textContent    = nextLap.name || `Lap ${currentLapIndex + 2}`;
             nextLapDetailsEl.textContent = `${nextLap.watt} | ${nextLap.rpm} RPM`;
             nextLapPreview.classList.remove('hidden');
         } else {
@@ -607,8 +690,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ====================== HAPTIC ======================
     function vibrate(pattern) {
-        if ('vibrate' in navigator) {
-            try { navigator.vibrate(pattern); } catch(e) {}
-        }
+        if ('vibrate' in navigator) { try { navigator.vibrate(pattern); } catch(e) {} }
     }
 });

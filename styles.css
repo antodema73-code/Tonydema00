@@ -347,7 +347,69 @@ h1 {
 .lap-item.zone-4 { border-left-color: #f97316; background: rgba(249,115,22,0.06); }
 .lap-item.zone-5 { border-left-color: #ef4444; background: rgba(239,68,68,0.06); }
 
-.lap-item-info { display: flex; flex-direction: column; gap: 4px; }
+.lap-item-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+
+/* ===== DRAG HANDLE ===== */
+.drag-handle {
+    font-size: 20px;
+    color: var(--text-secondary);
+    cursor: grab;
+    padding: 0 8px 0 0;
+    line-height: 1;
+    flex-shrink: 0;
+    touch-action: none;
+    user-select: none;
+}
+.drag-handle:active { cursor: grabbing; }
+
+.lap-item.dragging {
+    opacity: 0.4;
+    transform: scale(0.97);
+}
+.lap-item.drag-over {
+    border-left-color: var(--accent) !important;
+    background: rgba(59, 130, 246, 0.15) !important;
+    transform: scale(1.01);
+    box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* ===== WORK PHASE (ripetute multi-lavoro) ===== */
+.work-phase {
+    background: rgba(59, 130, 246, 0.06);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+}
+
+.work-phase-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.work-phase-label {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.remove-phase-btn {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+}
+.remove-phase-btn:active { background: var(--danger); color: white; }
+
+
 
 .lap-item-time {
     font-size: 15px;
