@@ -492,16 +492,17 @@ h1 {
 }
 
 .next-lap-preview {
-    margin-top: 24px;
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid var(--warning);
-    padding: 18px 24px;
-    border-radius: 18px;
+    margin-top: 16px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 2px solid var(--warning);
+    padding: 20px;
+    border-radius: 20px;
     width: 100%;
-    max-width: 380px;
+    max-width: 420px;
     transition: opacity 0.5s ease, transform 0.5s ease;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 8px;
 }
 
@@ -512,12 +513,13 @@ h1 {
 }
 
 .preview-header {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--warning);
     font-weight: 800;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
     text-align: center;
     text-transform: uppercase;
+    opacity: 0.9;
 }
 
 .preview-content {
@@ -525,11 +527,24 @@ h1 {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    width: 100%;
 }
 
-#next-lap-name { font-size: 22px; font-weight: 800; color: var(--accent); }
-#next-lap-details { font-size: 28px; font-weight: 800; color: var(--text-primary); }
+#next-lap-name {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--warning);
+    text-align: center;
+}
+
+#next-lap-details {
+    font-size: 38px;
+    font-weight: 800;
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 1.1;
+}
 
 /* ===== WORKOUT CONTROLS ===== */
 .controls {
