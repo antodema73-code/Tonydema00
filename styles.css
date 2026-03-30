@@ -495,11 +495,14 @@ h1 {
     margin-top: 24px;
     background: rgba(245, 158, 11, 0.1);
     border: 1px solid var(--warning);
-    padding: 14px 20px;
-    border-radius: 14px;
+    padding: 18px 24px;
+    border-radius: 18px;
     width: 100%;
-    max-width: 340px;
+    max-width: 380px;
     transition: opacity 0.5s ease, transform 0.5s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .next-lap-preview.hidden {
@@ -509,22 +512,24 @@ h1 {
 }
 
 .preview-header {
-    font-size: 12px;
+    font-size: 14px;
     color: var(--warning);
     font-weight: 800;
     letter-spacing: 1px;
-    margin-bottom: 6px;
-    text-align: left;
+    text-align: center;
+    text-transform: uppercase;
 }
 
 .preview-content {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
+    gap: 6px;
 }
 
-#next-lap-name { font-size: 15px; font-weight: 700; }
-#next-lap-details { font-size: 13px; color: var(--text-secondary); }
+#next-lap-name { font-size: 22px; font-weight: 800; color: var(--accent); }
+#next-lap-details { font-size: 28px; font-weight: 800; color: var(--text-primary); }
 
 /* ===== WORKOUT CONTROLS ===== */
 .controls {
