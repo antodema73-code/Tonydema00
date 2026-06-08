@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+﻿document.addEventListener('DOMContentLoaded', () => {
 
     // ====================== STATE ======================
     let laps = [];
@@ -725,5 +725,213 @@ document.addEventListener('DOMContentLoaded', () => {
     // ====================== HAPTIC ======================
     function vibrate(pattern) {
         if ('vibrate' in navigator) { try { navigator.vibrate(pattern); } catch(e) {} }
+    }
+
+    // ====================== PRINT (Stem Notes) ======================
+    const printWorkoutBtn = document.getElementById('print-workout-btn');
+    const printArea = document.getElementById('print-area');
+
+    if (printWorkoutBtn) {
+        printWorkoutBtn.addEventListener('click', () => {
+            if (laps.length === 0) { alert("Aggiungi almeno un lap da stampare!"); return; }
+
+            // --- Condensa i laps: raggruppa ripetute ---
+            let condensedLaps = [];
+            let skipSet = new Set();
+
+            for (let i = 0; i < laps.length; i++) {
+                if (skipSet.has(i)) continue;
+                let lap = laps[i];
+                let match = lap.name ? lap.name.match(/^(.*)\s+1\/(\d+)$/) : null;
+
+                if (match) {
+                    let baseName = match[1];
+                    let totalReps = parseInt(match[2]);
+                    // Raccoglie SOLO le fasi del primo ciclo (1/N)
+                    let phases = [];
+                    for (let k = i; k < laps.length; k++) {
+                        if (laps[k].name && laps[k].name.match(new RegExp('^' + baseName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s+1\\/' + totalReps + '$'))) {
+                            phases.push(laps[k]);
+                        }
+                    }
+                    // Segna tutti i lap appartenenti a questo blocco come "saltati"
+                    for (let k = i; k < laps.length; k++) {
+                        if (laps[k].name && laps[k].name.match(new RegExp('^' + baseName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s+\\d+\\/' + totalReps + '$'))) {
+                            skipSet.add(k);
+                        }
+                    }
+                    condensedLaps.push({ isBlock: true, reps: totalReps, phases: phases, baseName: baseName });
+                } else {
+                    condensedLaps.push({ isBlock: false, lap: lap });
+                }
+            }
+
+            // --- Formatta il tempo in modo compatto ---
+            function formatTime(t) {
+                const min = Math.floor(t / 60);
+                const sec = t % 60;
+                if (min === 0) return sec + '"';
+                if (sec === 0) return min + "'";
+                return min + "'" + sec + '"';
+            }
+
+            // --- Pulisce il nome della fase ---
+            function cleanPhaseName(raw, baseName) {
+                if (!raw) return '';
+                // Rimuove "baseName - " e il suffisso "1/N"
+                let n = raw.replace(baseName + ' - ', '').replace(/\s*\d+\/\d+$/, '').trim();
+                return n.toUpperCase();
+            }
+
+            // --- Genera HTML del talloncino con scala s ---
+            function renderPrintHTML(s) {
+                const fs = (pt) => (pt * s) + 'pt';
+                const sp = (mm) => (mm * s) + 'mm';
+
+                let html = '<div style="'
+                    + 'font-size:' + fs(8) + ';'
+                    + 'font-weight:900;'
+                    + 'text-align:center;'
+                    + 'border-bottom:' + Math.max(1, Math.round(1.5*s)) + 'px solid #000;'
+                    + 'margin-bottom:' + sp(0.8) + ';'
+                    + 'padding-bottom:' + sp(0.5) + ';'
+                    + 'text-transform:uppercase;'
+                    + 'white-space:nowrap;overflow:hidden;'
+                    + '">'
+                    + '🚴 ' + (workoutNameInput.value || 'Allenamento')
+                    + '</div>';
+
+                condensedLaps.forEach(item => {
+                    if (item.isBlock) {
+                        // Blocco ripetute: nome blocco + fasi (una riga ciascuna)
+                        let blockLabel = item.baseName.replace('Ripetute - ', '').trim().toUpperCase();
+                        html += '<div style="'
+                            + 'border-top:' + Math.max(1, Math.round(1.5*s)) + 'px solid #000;'
+                            + 'border-bottom:' + Math.max(1, Math.round(1.5*s)) + 'px solid #000;'
+                            + 'margin:' + sp(0.8) + ' 0;'
+                            + '">';
+
+                        // Intestazione blocco
+                        html += '<div style="'
+                            + 'font-size:' + fs(7.5) + ';'
+                            + 'font-weight:900;'
+                            + 'text-align:center;'
+                            + 'border-bottom:1px solid #000;'
+                            + 'padding:' + sp(0.4) + ' 0;'
+                            + 'text-transform:uppercase;'
+                            + 'white-space:nowrap;overflow:hidden;'
+                            + '">🔁 ' + item.reps + 'x ' + blockLabel + '</div>';
+
+                        item.phases.forEach((p, idx) => {
+                            let pName = cleanPhaseName(p.name, item.baseName);
+                            let w = (p.watt && p.watt !== '---') ? p.watt : '-';
+                            let r = (p.rpm && p.rpm !== '---') ? p.rpm : '-';
+                            let t = formatTime(p.time);
+                            let isLast = idx === item.phases.length - 1;
+
+                            html += '<div style="'
+                                + 'padding:' + sp(0.4) + ' 0;'
+                                + (isLast ? '' : 'border-bottom:1px dotted #aaa;')
+                                + '">';
+                            // Nome fase
+                            html += '<div style="'
+                                + 'font-size:' + fs(6.5) + ';'
+                                + 'font-weight:900;'
+                                + 'text-transform:uppercase;'
+                                + 'line-height:1;'
+                                + 'white-space:nowrap;overflow:hidden;'
+                                + 'margin-bottom:' + sp(0.3) + ';'
+                                + '">' + pName + '</div>';
+                            // Riga dati
+                            html += '<div style="'
+                                + 'display:flex;'
+                                + 'gap:' + sp(0.5) + ';'
+                                + 'font-size:' + fs(7.5) + ';'
+                                + 'font-weight:900;'
+                                + 'line-height:1;'
+                                + 'white-space:nowrap;'
+                                + '">'
+                                + '<span>⏱' + t + '</span>'
+                                + '<span>⚡' + w + '</span>'
+                                + '<span>🌀' + r + '</span>'
+                                + '</div>';
+                            html += '</div>';
+                        });
+                        html += '</div>';
+
+                    } else {
+                        // Lap singolo
+                        let lap = item.lap;
+                        let pName = (lap.name || 'LAP').toUpperCase();
+                        let w = (lap.watt && lap.watt !== '---') ? lap.watt : '-';
+                        let r = (lap.rpm && lap.rpm !== '---') ? lap.rpm : '-';
+                        let t = formatTime(lap.time);
+
+                        html += '<div style="'
+                            + 'border-bottom:1px solid #888;'
+                            + 'padding:' + sp(0.4) + ' 0;'
+                            + '">';
+                        html += '<div style="'
+                            + 'font-size:' + fs(6.5) + ';'
+                            + 'font-weight:900;'
+                            + 'text-transform:uppercase;'
+                            + 'line-height:1;'
+                            + 'white-space:nowrap;overflow:hidden;'
+                            + 'margin-bottom:' + sp(0.3) + ';'
+                            + '">' + pName + '</div>';
+                        html += '<div style="'
+                            + 'display:flex;'
+                            + 'gap:' + sp(0.5) + ';'
+                            + 'font-size:' + fs(7.5) + ';'
+                            + 'font-weight:900;'
+                            + 'line-height:1;'
+                            + 'white-space:nowrap;'
+                            + '">'
+                            + '<span>⏱' + t + '</span>'
+                            + '<span>⚡' + w + '</span>'
+                            + '<span>🌀' + r + '</span>'
+                            + '</div>';
+                        html += '</div>';
+                    }
+                });
+
+                return html;
+            }
+
+            // --- Auto-scaling: misura altezza e riduce finché entra in 65mm ---
+            const TARGET_MM = 65;
+            const TARGET_PX = TARGET_MM * 3.7795;
+
+            // Posiziona print-area invisibile per misurare
+            printArea.style.cssText = [
+                'display:block',
+                'position:fixed',
+                'visibility:hidden',
+                'top:0',
+                'left:0',
+                'width:33mm',
+                'box-sizing:border-box',
+                'padding:2mm',
+                'background:white',
+                'color:black',
+                'font-family:system-ui,-apple-system,sans-serif',
+                'z-index:-9999'
+            ].join('!important;') + '!important';
+
+            let scale = 1.0;
+            printArea.innerHTML = renderPrintHTML(scale);
+
+            // Itera per ridurre scala finché l'altezza entra nel target
+            let iterations = 0;
+            while (printArea.scrollHeight > TARGET_PX && scale > 0.35 && iterations < 40) {
+                scale = Math.round((scale - 0.05) * 100) / 100;
+                printArea.innerHTML = renderPrintHTML(scale);
+                iterations++;
+            }
+
+            // Resetta stili e stampa
+            printArea.style.cssText = '';
+            window.print();
+        });
     }
 });

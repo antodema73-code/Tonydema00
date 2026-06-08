@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="it" data-theme="dark">
 <head>
     <meta charset="UTF-8">
@@ -32,6 +32,7 @@
             <div class="manager-actions">
                 <button id="export-workout-btn" class="btn secondary small outline">📤 Esporta</button>
                 <button id="import-workout-btn" class="btn secondary small outline">📥 Importa</button>
+                <button id="print-workout-btn" class="btn secondary small outline">🖨️ Stampa</button>
             </div>
         </div>
 
@@ -71,6 +72,9 @@
             </div>
             <button id="start-workout-btn" class="btn primary">INIZIA ALLENAMENTO</button>
         </div>
+
+        <!-- PRINT AREA (Hidden on screen, visible on print) -->
+        <div id="print-area" class="print-only"></div>
     </div>
 
     <!-- WORKOUT SCREEN -->

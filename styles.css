@@ -1,4 +1,4 @@
-/* ===== THEME VARIABLES ===== */
+﻿/* ===== THEME VARIABLES ===== */
 :root, [data-theme="dark"] {
     --bg-dark: #0f172a;
     --bg-surface: #1e293b;
@@ -807,3 +807,30 @@ h1 {
 #repeats-modal .row-group {
     grid-template-columns: 1fr 1fr;
 }
+
+/* ===== PRINT STYLES (Stem Notes) ===== */
+@media print {
+    body * { visibility: hidden !important; }
+    #print-area, #print-area * { visibility: visible !important; }
+    #print-area {
+        position: fixed;
+        left: 0; top: 0;
+        width: 35mm;
+        max-height: 65mm;
+        overflow: hidden;
+        padding: 2mm;
+        box-sizing: border-box;
+        background: white !important;
+        color: black !important;
+        font-family: system-ui, -apple-system, sans-serif;
+    }
+    @page {
+        size: 35mm 65mm;
+        margin: 0;
+    }
+}
+
+@media screen {
+    #print-area { display: none !important; }
+}
+
