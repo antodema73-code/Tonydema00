@@ -727,7 +727,7 @@
         if ('vibrate' in navigator) { try { navigator.vibrate(pattern); } catch(e) {} }
     }
 
-    // ====================== PRINT v3.0 (Stem Notes) ======================
+    // ====================== PRINT v3.1 (Talloncino A4 con ritaglio) ======================
     const printWorkoutBtn = document.getElementById('print-workout-btn');
     const printArea = document.getElementById('print-area');
 
@@ -735,7 +735,7 @@
         printWorkoutBtn.addEventListener('click', () => {
             if (laps.length === 0) { alert("Aggiungi almeno un lap da stampare!"); return; }
 
-            // --- Condensa i laps: raggruppa ripetute ---
+            // --- Condensa laps: raggruppa ripetute ---
             let condensedLaps = [];
             let skipSet = new Set();
 
@@ -747,15 +747,11 @@
                 if (match) {
                     let baseName = match[1];
                     let totalReps = parseInt(match[2]);
-                    // Raccoglie SOLO le fasi del primo ciclo
                     let phases = [];
                     for (let k = i; k < laps.length; k++) {
                         let re = new RegExp('^' + baseName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s+1\\/' + totalReps + '$');
-                        if (laps[k].name && laps[k].name.match(re)) {
-                            phases.push(laps[k]);
-                        }
+                        if (laps[k].name && laps[k].name.match(re)) phases.push(laps[k]);
                     }
-                    // Segna tutti i lap del blocco come saltati
                     for (let k = i; k < laps.length; k++) {
                         let re2 = new RegExp('^' + baseName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s+\\d+\\/' + totalReps + '$');
                         if (laps[k].name && laps[k].name.match(re2)) skipSet.add(k);
@@ -777,99 +773,90 @@
             // --- Abbrevia nome fase ---
             function abbr(raw, baseName) {
                 if (!raw) return 'LAP';
-                let n = raw
+                return raw
                     .replace((baseName || '') + ' - ', '')
                     .replace(/\s*\d+\/\d+$/, '')
-                    .replace('Riscaldamento', 'RISC.')
-                    .replace('Defaticamento', 'DEFAT.')
-                    .replace('Recupero', 'REC.')
-                    .replace('Lavoro', 'LAV.')
-                    .replace('Ripetute - ', '')
+                    .replace(/[Rr]iscaldamento/g, 'RISC.')
+                    .replace(/[Dd]efaticamento/g, 'DEFAT.')
+                    .replace(/[Rr]ecupero/g, 'REC.')
+                    .replace(/[Ll]avoro/g, 'LAV.')
+                    .replace(/[Rr]ipetute\s*-\s*/g, '')
                     .trim()
-                    .toUpperCase();
-                // Tronca se troppo lungo
-                return n.length > 14 ? n.substring(0, 13) + '.' : n;
+                    .toUpperCase()
+                    .substring(0, 16);
             }
 
-            // --- Genera HTML con scala s ---
-            function renderPrintHTML(s) {
-                const f = v => (v * s).toFixed(1);   // font in pt
-                const p = v => (v * s).toFixed(1);   // padding in mm
+            // --- Genera HTML interno del talloncino (con scala s) ---
+            function buildContent(s) {
+                // s=1 -> font "normali" per 35x65mm
+                const fs = (pt) => (pt * s).toFixed(1) + 'pt';
+                const sp = (mm) => (mm * s).toFixed(1) + 'mm';
+                const bdr = Math.max(1, Math.round(1.5 * s)) + 'px solid #000';
 
-                // Stili base
-                const baseStyle = 'font-family:Arial,Helvetica,sans-serif;font-weight:900;color:#000;';
+                let html = '';
 
-                // Titolo
-                let html = '<div style="' + baseStyle
-                    + 'font-size:' + f(8) + 'pt;'
-                    + 'text-align:center;'
-                    + 'text-transform:uppercase;'
-                    + 'border-bottom:' + Math.max(1,Math.round(1.5*s)) + 'px solid #000;'
-                    + 'padding-bottom:' + p(0.6) + 'mm;'
-                    + 'margin-bottom:' + p(0.6) + 'mm;'
-                    + 'white-space:nowrap;overflow:hidden;'
-                    + '">' + (workoutNameInput.value || 'ALLENAMENTO') + '</div>';
-
-                // Funzione riga dati fase (T: W: R:)
-                function phaseRow(lap, baseName) {
-                    let name = abbr(lap.name, baseName);
-                    let w = (lap.watt && lap.watt !== '---') ? lap.watt : '-';
-                    let r = (lap.rpm && lap.rpm !== '---') ? lap.rpm : '-';
-                    let t = fmt(lap.time);
-                    let rows = '';
-                    // Nome fase
-                    rows += '<div style="' + baseStyle
-                        + 'font-size:' + f(6.5) + 'pt;'
-                        + 'text-transform:uppercase;'
-                        + 'line-height:1;'
-                        + 'margin-bottom:' + p(0.2) + 'mm;'
-                        + 'white-space:nowrap;overflow:hidden;'
-                        + '">' + name + '</div>';
-                    // Dati: T: W: R:
-                    rows += '<div style="' + baseStyle
-                        + 'font-size:' + f(7) + 'pt;'
-                        + 'display:flex;gap:' + p(1.5) + 'mm;'
-                        + 'line-height:1;'
-                        + '">'
-                        + '<span>T:' + t + '</span>'
-                        + '<span>W:' + w + '</span>'
-                        + '<span>R:' + r + '</span>'
-                        + '</div>';
-                    return rows;
-                }
+                // Titolo allenamento
+                html += '<div style="font-size:' + fs(9) + ';font-weight:900;text-align:center;'
+                    + 'text-transform:uppercase;border-bottom:' + bdr + ';'
+                    + 'padding-bottom:' + sp(0.8) + ';margin-bottom:' + sp(0.8) + ';'
+                    + 'white-space:nowrap;overflow:hidden;letter-spacing:0.5px;">'
+                    + (workoutNameInput.value || 'ALLENAMENTO')
+                    + '</div>';
 
                 condensedLaps.forEach(item => {
                     if (item.isBlock) {
-                        let blockLabel = abbr(item.baseName, '');
-                        // Header blocco ripetute
-                        html += '<div style="'
-                            + 'border-top:' + Math.max(1,Math.round(1.5*s)) + 'px solid #000;'
-                            + 'border-bottom:' + Math.max(1,Math.round(1.5*s)) + 'px solid #000;'
-                            + 'margin:' + p(0.8) + 'mm 0;'
-                            + 'padding:' + p(0.3) + 'mm 0;'
-                            + '">';
-                        html += '<div style="' + baseStyle
-                            + 'font-size:' + f(7) + 'pt;'
-                            + 'text-align:center;'
-                            + 'border-bottom:1px solid #000;'
-                            + 'padding-bottom:' + p(0.3) + 'mm;'
-                            + 'margin-bottom:' + p(0.3) + 'mm;'
-                            + 'white-space:nowrap;overflow:hidden;'
-                            + '">' + item.reps + 'x ' + blockLabel + '</div>';
+                        // Blocco ripetute
+                        let label = abbr(item.baseName, '').replace('RIPETUTE - ','').replace('RIPETUTE','');
+                        html += '<div style="border-top:' + bdr + ';border-bottom:' + bdr + ';'
+                            + 'margin:' + sp(1) + ' 0;padding:' + sp(0.4) + ' 0;">';
 
-                        item.phases.forEach((p2, idx) => {
+                        // Header: Nx NOME
+                        html += '<div style="font-size:' + fs(8) + ';font-weight:900;text-align:center;'
+                            + 'border-bottom:1px solid #000;padding-bottom:' + sp(0.4) + ';'
+                            + 'margin-bottom:' + sp(0.3) + ';text-transform:uppercase;'
+                            + 'white-space:nowrap;overflow:hidden;">'
+                            + item.reps + 'x ' + label
+                            + '</div>';
+
+                        // Fasi
+                        item.phases.forEach((ph, idx) => {
                             let isLast = idx === item.phases.length - 1;
-                            html += '<div style="padding:' + p(0.3) + 'mm 0 ' + p(0.3) + 'mm 0;'
-                                + (isLast ? '' : 'border-bottom:1px dotted #bbb;')
-                                + '">';
-                            html += phaseRow(p2, item.baseName);
+                            let w = (ph.watt && ph.watt !== '---') ? ph.watt : '-';
+                            let r = (ph.rpm && ph.rpm !== '---') ? ph.rpm : '-';
+                            let pName = abbr(ph.name, item.baseName);
+
+                            html += '<div style="padding:' + sp(0.35) + ' 0;'
+                                + (isLast ? '' : 'border-bottom:1px dotted #bbb;') + '">';
+                            html += '<div style="font-size:' + fs(7) + ';font-weight:900;'
+                                + 'text-transform:uppercase;line-height:1;margin-bottom:' + sp(0.25) + ';'
+                                + 'white-space:nowrap;overflow:hidden;">' + pName + '</div>';
+                            html += '<div style="font-size:' + fs(7.5) + ';font-weight:900;'
+                                + 'display:flex;gap:' + sp(2) + ';line-height:1;">'
+                                + '<span>T:' + fmt(ph.time) + '</span>'
+                                + '<span>W:' + w + '</span>'
+                                + '<span>R:' + r + '</span>'
+                                + '</div>';
                             html += '</div>';
                         });
                         html += '</div>';
+
                     } else {
+                        // Lap singolo
                         let lap = item.lap;
-                        html += '<div style="border-bottom:1px solid #aaa;padding:' + p(0.4) + 'mm 0;">';
-                        html += phaseRow(lap, '');
+                        let w = (lap.watt && lap.watt !== '---') ? lap.watt : '-';
+                        let r = (lap.rpm && lap.rpm !== '---') ? lap.rpm : '-';
+                        let pName = abbr(lap.name || 'LAP', '');
+
+                        html += '<div style="border-bottom:1px solid #999;padding:' + sp(0.4) + ' 0;">';
+                        html += '<div style="font-size:' + fs(7) + ';font-weight:900;'
+                            + 'text-transform:uppercase;line-height:1;margin-bottom:' + sp(0.25) + ';'
+                            + 'white-space:nowrap;overflow:hidden;">' + pName + '</div>';
+                        html += '<div style="font-size:' + fs(7.5) + ';font-weight:900;'
+                            + 'display:flex;gap:' + sp(2) + ';line-height:1;">'
+                            + '<span>T:' + fmt(lap.time) + '</span>'
+                            + '<span>W:' + w + '</span>'
+                            + '<span>R:' + r + '</span>'
+                            + '</div>';
                         html += '</div>';
                     }
                 });
@@ -877,34 +864,62 @@
                 return html;
             }
 
-            // --- Auto-scaling: misura e riduce per entrare in 65mm ---
-            const TARGET_PX = 61 * 3.7795; // 61mm in px (lascia 2mm padding)
+            // --- Misura altezza per auto-scaling ---
+            // Il talloncino fisico è 35x65mm. A 96dpi: 1mm=3.7795px
+            const MM_TO_PX = 3.7795;
+            const MAX_H_PX = 61 * MM_TO_PX; // 61mm di spazio utile (65 - 4mm padding)
 
-            printArea.style.cssText = [
-                'display:block',
+            // Contenitore di misura invisibile
+            let measurer = document.getElementById('_print_measurer');
+            if (!measurer) {
+                measurer = document.createElement('div');
+                measurer.id = '_print_measurer';
+                document.body.appendChild(measurer);
+            }
+            measurer.style.cssText = [
                 'position:fixed',
-                'visibility:hidden',
                 'top:-9999px',
                 'left:0',
-                'width:31mm',       // 35mm - 4mm padding
+                'width:31mm',
+                'visibility:hidden',
+                'font-family:Arial,Helvetica,sans-serif',
                 'box-sizing:content-box',
                 'padding:2mm',
-                'background:white',
-                'color:black',
-                'font-family:Arial,Helvetica,sans-serif'
+                'background:white'
             ].join('!important;') + '!important';
 
             let scale = 1.0;
-            printArea.innerHTML = renderPrintHTML(scale);
-
+            measurer.innerHTML = buildContent(scale);
             let iter = 0;
-            while (printArea.scrollHeight > TARGET_PX && scale > 0.45 && iter < 30) {
+            while (measurer.scrollHeight > MAX_H_PX && scale > 0.55 && iter < 20) {
                 scale = Math.round((scale - 0.05) * 100) / 100;
-                printArea.innerHTML = renderPrintHTML(scale);
+                measurer.innerHTML = buildContent(scale);
                 iter++;
             }
 
-            // Forza overflow hidden per non sforare mai
+            // --- Costruisce la pagina di stampa con il rettangolo da ritagliare ---
+            // Il talloncino viene mostrato come rettangolo su A4 con bordo tratteggiato
+            // Font scalati ma leggibili (la scala trovata si applica anche qui)
+            const finalContent = buildContent(scale);
+
+            // Rettangolo esterno: 35mm x 65mm con bordo tratteggiato, centrato in alto a sinistra
+            printArea.innerHTML =
+                '<div style="'
+                + 'width:35mm;height:65mm;'
+                + 'border:1.5px dashed #555;'
+                + 'box-sizing:border-box;'
+                + 'padding:2mm;'
+                + 'overflow:hidden;'
+                + 'font-family:Arial,Helvetica,sans-serif;'
+                + 'color:#000;background:#fff;'
+                + '">'
+                + finalContent
+                + '</div>'
+                + '<div style="'
+                + 'margin-top:3mm;'
+                + 'font-size:7pt;color:#888;font-family:Arial;'
+                + '">✂ ritaglia lungo il bordo tratteggiato</div>';
+
             printArea.style.cssText = '';
             window.print();
         });
