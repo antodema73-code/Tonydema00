@@ -813,16 +813,20 @@ h1 {
     body * { visibility: hidden !important; }
     #print-area, #print-area * { visibility: visible !important; }
     #print-area {
-        position: fixed;
-        left: 0; top: 0;
-        width: 35mm;
-        max-height: 65mm;
-        overflow: hidden;
-        padding: 2mm;
-        box-sizing: border-box;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 31mm !important;
+        height: 61mm !important;
+        max-height: 61mm !important;
+        overflow: hidden !important;
+        padding: 2mm !important;
+        box-sizing: content-box !important;
         background: white !important;
         color: black !important;
-        font-family: system-ui, -apple-system, sans-serif;
+        font-family: Arial, Helvetica, sans-serif !important;
+        page-break-after: avoid !important;
+        page-break-inside: avoid !important;
     }
     @page {
         size: 35mm 65mm;
@@ -833,4 +837,5 @@ h1 {
 @media screen {
     #print-area { display: none !important; }
 }
+
 

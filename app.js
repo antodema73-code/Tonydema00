@@ -727,7 +727,7 @@
         if ('vibrate' in navigator) { try { navigator.vibrate(pattern); } catch(e) {} }
     }
 
-    // ====================== PRINT (Stem Notes) ======================
+    // ====================== PRINT v3.0 (Stem Notes) ======================
     const printWorkoutBtn = document.getElementById('print-workout-btn');
     const printArea = document.getElementById('print-area');
 
@@ -747,18 +747,18 @@
                 if (match) {
                     let baseName = match[1];
                     let totalReps = parseInt(match[2]);
-                    // Raccoglie SOLO le fasi del primo ciclo (1/N)
+                    // Raccoglie SOLO le fasi del primo ciclo
                     let phases = [];
                     for (let k = i; k < laps.length; k++) {
-                        if (laps[k].name && laps[k].name.match(new RegExp('^' + baseName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s+1\\/' + totalReps + '$'))) {
+                        let re = new RegExp('^' + baseName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s+1\\/' + totalReps + '$');
+                        if (laps[k].name && laps[k].name.match(re)) {
                             phases.push(laps[k]);
                         }
                     }
-                    // Segna tutti i lap appartenenti a questo blocco come "saltati"
+                    // Segna tutti i lap del blocco come saltati
                     for (let k = i; k < laps.length; k++) {
-                        if (laps[k].name && laps[k].name.match(new RegExp('^' + baseName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s+\\d+\\/' + totalReps + '$'))) {
-                            skipSet.add(k);
-                        }
+                        let re2 = new RegExp('^' + baseName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s+\\d+\\/' + totalReps + '$');
+                        if (laps[k].name && laps[k].name.match(re2)) skipSet.add(k);
                     }
                     condensedLaps.push({ isBlock: true, reps: totalReps, phases: phases, baseName: baseName });
                 } else {
@@ -766,131 +766,110 @@
                 }
             }
 
-            // --- Formatta il tempo in modo compatto ---
-            function formatTime(t) {
-                const min = Math.floor(t / 60);
-                const sec = t % 60;
-                if (min === 0) return sec + '"';
-                if (sec === 0) return min + "'";
-                return min + "'" + sec + '"';
+            // --- Formatta tempo compatto ---
+            function fmt(t) {
+                const m = Math.floor(t / 60), s = t % 60;
+                if (m === 0) return s + '"';
+                if (s === 0) return m + "'";
+                return m + "'" + s + '"';
             }
 
-            // --- Pulisce il nome della fase ---
-            function cleanPhaseName(raw, baseName) {
-                if (!raw) return '';
-                // Rimuove "baseName - " e il suffisso "1/N"
-                let n = raw.replace(baseName + ' - ', '').replace(/\s*\d+\/\d+$/, '').trim();
-                return n.toUpperCase();
+            // --- Abbrevia nome fase ---
+            function abbr(raw, baseName) {
+                if (!raw) return 'LAP';
+                let n = raw
+                    .replace((baseName || '') + ' - ', '')
+                    .replace(/\s*\d+\/\d+$/, '')
+                    .replace('Riscaldamento', 'RISC.')
+                    .replace('Defaticamento', 'DEFAT.')
+                    .replace('Recupero', 'REC.')
+                    .replace('Lavoro', 'LAV.')
+                    .replace('Ripetute - ', '')
+                    .trim()
+                    .toUpperCase();
+                // Tronca se troppo lungo
+                return n.length > 14 ? n.substring(0, 13) + '.' : n;
             }
 
-            // --- Genera HTML del talloncino con scala s ---
+            // --- Genera HTML con scala s ---
             function renderPrintHTML(s) {
-                const fs = (pt) => (pt * s) + 'pt';
-                const sp = (mm) => (mm * s) + 'mm';
+                const f = v => (v * s).toFixed(1);   // font in pt
+                const p = v => (v * s).toFixed(1);   // padding in mm
 
-                let html = '<div style="'
-                    + 'font-size:' + fs(8) + ';'
-                    + 'font-weight:900;'
+                // Stili base
+                const baseStyle = 'font-family:Arial,Helvetica,sans-serif;font-weight:900;color:#000;';
+
+                // Titolo
+                let html = '<div style="' + baseStyle
+                    + 'font-size:' + f(8) + 'pt;'
                     + 'text-align:center;'
-                    + 'border-bottom:' + Math.max(1, Math.round(1.5*s)) + 'px solid #000;'
-                    + 'margin-bottom:' + sp(0.8) + ';'
-                    + 'padding-bottom:' + sp(0.5) + ';'
                     + 'text-transform:uppercase;'
+                    + 'border-bottom:' + Math.max(1,Math.round(1.5*s)) + 'px solid #000;'
+                    + 'padding-bottom:' + p(0.6) + 'mm;'
+                    + 'margin-bottom:' + p(0.6) + 'mm;'
                     + 'white-space:nowrap;overflow:hidden;'
-                    + '">'
-                    + '🚴 ' + (workoutNameInput.value || 'Allenamento')
-                    + '</div>';
+                    + '">' + (workoutNameInput.value || 'ALLENAMENTO') + '</div>';
+
+                // Funzione riga dati fase (T: W: R:)
+                function phaseRow(lap, baseName) {
+                    let name = abbr(lap.name, baseName);
+                    let w = (lap.watt && lap.watt !== '---') ? lap.watt : '-';
+                    let r = (lap.rpm && lap.rpm !== '---') ? lap.rpm : '-';
+                    let t = fmt(lap.time);
+                    let rows = '';
+                    // Nome fase
+                    rows += '<div style="' + baseStyle
+                        + 'font-size:' + f(6.5) + 'pt;'
+                        + 'text-transform:uppercase;'
+                        + 'line-height:1;'
+                        + 'margin-bottom:' + p(0.2) + 'mm;'
+                        + 'white-space:nowrap;overflow:hidden;'
+                        + '">' + name + '</div>';
+                    // Dati: T: W: R:
+                    rows += '<div style="' + baseStyle
+                        + 'font-size:' + f(7) + 'pt;'
+                        + 'display:flex;gap:' + p(1.5) + 'mm;'
+                        + 'line-height:1;'
+                        + '">'
+                        + '<span>T:' + t + '</span>'
+                        + '<span>W:' + w + '</span>'
+                        + '<span>R:' + r + '</span>'
+                        + '</div>';
+                    return rows;
+                }
 
                 condensedLaps.forEach(item => {
                     if (item.isBlock) {
-                        // Blocco ripetute: nome blocco + fasi (una riga ciascuna)
-                        let blockLabel = item.baseName.replace('Ripetute - ', '').trim().toUpperCase();
+                        let blockLabel = abbr(item.baseName, '');
+                        // Header blocco ripetute
                         html += '<div style="'
-                            + 'border-top:' + Math.max(1, Math.round(1.5*s)) + 'px solid #000;'
-                            + 'border-bottom:' + Math.max(1, Math.round(1.5*s)) + 'px solid #000;'
-                            + 'margin:' + sp(0.8) + ' 0;'
+                            + 'border-top:' + Math.max(1,Math.round(1.5*s)) + 'px solid #000;'
+                            + 'border-bottom:' + Math.max(1,Math.round(1.5*s)) + 'px solid #000;'
+                            + 'margin:' + p(0.8) + 'mm 0;'
+                            + 'padding:' + p(0.3) + 'mm 0;'
                             + '">';
-
-                        // Intestazione blocco
-                        html += '<div style="'
-                            + 'font-size:' + fs(7.5) + ';'
-                            + 'font-weight:900;'
+                        html += '<div style="' + baseStyle
+                            + 'font-size:' + f(7) + 'pt;'
                             + 'text-align:center;'
                             + 'border-bottom:1px solid #000;'
-                            + 'padding:' + sp(0.4) + ' 0;'
-                            + 'text-transform:uppercase;'
+                            + 'padding-bottom:' + p(0.3) + 'mm;'
+                            + 'margin-bottom:' + p(0.3) + 'mm;'
                             + 'white-space:nowrap;overflow:hidden;'
-                            + '">🔁 ' + item.reps + 'x ' + blockLabel + '</div>';
+                            + '">' + item.reps + 'x ' + blockLabel + '</div>';
 
-                        item.phases.forEach((p, idx) => {
-                            let pName = cleanPhaseName(p.name, item.baseName);
-                            let w = (p.watt && p.watt !== '---') ? p.watt : '-';
-                            let r = (p.rpm && p.rpm !== '---') ? p.rpm : '-';
-                            let t = formatTime(p.time);
+                        item.phases.forEach((p2, idx) => {
                             let isLast = idx === item.phases.length - 1;
-
-                            html += '<div style="'
-                                + 'padding:' + sp(0.4) + ' 0;'
-                                + (isLast ? '' : 'border-bottom:1px dotted #aaa;')
+                            html += '<div style="padding:' + p(0.3) + 'mm 0 ' + p(0.3) + 'mm 0;'
+                                + (isLast ? '' : 'border-bottom:1px dotted #bbb;')
                                 + '">';
-                            // Nome fase
-                            html += '<div style="'
-                                + 'font-size:' + fs(6.5) + ';'
-                                + 'font-weight:900;'
-                                + 'text-transform:uppercase;'
-                                + 'line-height:1;'
-                                + 'white-space:nowrap;overflow:hidden;'
-                                + 'margin-bottom:' + sp(0.3) + ';'
-                                + '">' + pName + '</div>';
-                            // Riga dati
-                            html += '<div style="'
-                                + 'display:flex;'
-                                + 'gap:' + sp(0.5) + ';'
-                                + 'font-size:' + fs(7.5) + ';'
-                                + 'font-weight:900;'
-                                + 'line-height:1;'
-                                + 'white-space:nowrap;'
-                                + '">'
-                                + '<span>⏱' + t + '</span>'
-                                + '<span>⚡' + w + '</span>'
-                                + '<span>🌀' + r + '</span>'
-                                + '</div>';
+                            html += phaseRow(p2, item.baseName);
                             html += '</div>';
                         });
                         html += '</div>';
-
                     } else {
-                        // Lap singolo
                         let lap = item.lap;
-                        let pName = (lap.name || 'LAP').toUpperCase();
-                        let w = (lap.watt && lap.watt !== '---') ? lap.watt : '-';
-                        let r = (lap.rpm && lap.rpm !== '---') ? lap.rpm : '-';
-                        let t = formatTime(lap.time);
-
-                        html += '<div style="'
-                            + 'border-bottom:1px solid #888;'
-                            + 'padding:' + sp(0.4) + ' 0;'
-                            + '">';
-                        html += '<div style="'
-                            + 'font-size:' + fs(6.5) + ';'
-                            + 'font-weight:900;'
-                            + 'text-transform:uppercase;'
-                            + 'line-height:1;'
-                            + 'white-space:nowrap;overflow:hidden;'
-                            + 'margin-bottom:' + sp(0.3) + ';'
-                            + '">' + pName + '</div>';
-                        html += '<div style="'
-                            + 'display:flex;'
-                            + 'gap:' + sp(0.5) + ';'
-                            + 'font-size:' + fs(7.5) + ';'
-                            + 'font-weight:900;'
-                            + 'line-height:1;'
-                            + 'white-space:nowrap;'
-                            + '">'
-                            + '<span>⏱' + t + '</span>'
-                            + '<span>⚡' + w + '</span>'
-                            + '<span>🌀' + r + '</span>'
-                            + '</div>';
+                        html += '<div style="border-bottom:1px solid #aaa;padding:' + p(0.4) + 'mm 0;">';
+                        html += phaseRow(lap, '');
                         html += '</div>';
                     }
                 });
@@ -898,38 +877,34 @@
                 return html;
             }
 
-            // --- Auto-scaling: misura altezza e riduce finché entra in 65mm ---
-            const TARGET_MM = 65;
-            const TARGET_PX = TARGET_MM * 3.7795;
+            // --- Auto-scaling: misura e riduce per entrare in 65mm ---
+            const TARGET_PX = 61 * 3.7795; // 61mm in px (lascia 2mm padding)
 
-            // Posiziona print-area invisibile per misurare
             printArea.style.cssText = [
                 'display:block',
                 'position:fixed',
                 'visibility:hidden',
-                'top:0',
+                'top:-9999px',
                 'left:0',
-                'width:33mm',
-                'box-sizing:border-box',
+                'width:31mm',       // 35mm - 4mm padding
+                'box-sizing:content-box',
                 'padding:2mm',
                 'background:white',
                 'color:black',
-                'font-family:system-ui,-apple-system,sans-serif',
-                'z-index:-9999'
+                'font-family:Arial,Helvetica,sans-serif'
             ].join('!important;') + '!important';
 
             let scale = 1.0;
             printArea.innerHTML = renderPrintHTML(scale);
 
-            // Itera per ridurre scala finché l'altezza entra nel target
-            let iterations = 0;
-            while (printArea.scrollHeight > TARGET_PX && scale > 0.35 && iterations < 40) {
+            let iter = 0;
+            while (printArea.scrollHeight > TARGET_PX && scale > 0.45 && iter < 30) {
                 scale = Math.round((scale - 0.05) * 100) / 100;
                 printArea.innerHTML = renderPrintHTML(scale);
-                iterations++;
+                iter++;
             }
 
-            // Resetta stili e stampa
+            // Forza overflow hidden per non sforare mai
             printArea.style.cssText = '';
             window.print();
         });
